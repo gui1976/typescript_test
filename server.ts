@@ -16,8 +16,8 @@ interface DBOptions
 
 // Actual database options
 const options : DBOptions = {
-  // user: ,
-  // password: ,
+  user: 'gui',
+  password: 'gui_postgres',
   host: 'localhost',
   database: 'lovelystay_test',
 };
