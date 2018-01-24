@@ -42,7 +42,11 @@ const pgpDefaultConfig = {
 };
 
 interface GithubUsers
-  { id : number
+  { id : number,
+    name: string,
+    company: string,
+    followers: number,
+    following: number
   };
 
 const pgp = pgPromise(pgpDefaultConfig);
@@ -60,7 +64,7 @@ process.argv.forEach(function(val, index) {
 
 console.log('this is the given git user', git_user);
 
-db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT, name TEXT, company TEXT)')
+db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT, name TEXT, company TEXT, followers TEXT, following TEXT)')
 .then(() => request({
   //uri: 'https://api.github.com/users/gaearon',
   uri: `https://api.github.com/users/${git_user}`,
@@ -70,6 +74,6 @@ db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT, name
   json: true
 }))
 .then((data: GithubUsers) => db.one(
-  'INSERT INTO github_users (login) VALUES ($[login]) RETURNING id', data)
+  'INSERT INTO github_users (login, name, company, followers, following) VALUES ($[login], $[name], $[company], $[followers], $[following]) RETURNING id', data)
 ).then(({id}) => console.log(id))
 .then(() => process.exit(0));
