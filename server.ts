@@ -49,9 +49,21 @@ const pgp = pgPromise(pgpDefaultConfig);
 const db = pgp(options);
 
 
+//const git_user= process.argv[2];
+
+let  git_user;
+
+process.argv.forEach(function(val, index) {
+  console.log(index + ' : ' + val);
+  if(index==2) git_user =  val;
+ });
+
+console.log('this is the given git user', git_user);
+
 db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT, name TEXT, company TEXT)')
 .then(() => request({
-  uri: 'https://api.github.com/users/gaearon',
+  //uri: 'https://api.github.com/users/gaearon',
+  uri: `https://api.github.com/users/${git_user}`,
   headers: {
         'User-Agent': 'Request-Promise'
     },
