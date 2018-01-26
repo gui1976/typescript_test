@@ -43,18 +43,18 @@ const pgpDefaultConfig = {
 
 interface GithubUsers
   { id : number,
+    login: string,
     name: string,
     company: string,
     followers: number,
-    following: number
+    following: number,
+    location: string
   };
 
 const pgp = pgPromise(pgpDefaultConfig);
 const db = pgp(options);
 
-
-//const git_user= process.argv[2];
-
+/*
 let  git_user;
 
 process.argv.forEach(function(val, index) {
@@ -63,28 +63,69 @@ process.argv.forEach(function(val, index) {
  });
 
 console.log('this is the given git user', git_user);
+*/
 
-db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT PRIMARY KEY, name TEXT, company TEXT, followers TEXT, following TEXT)')
-.then(() => request({
-  //uri: 'https://api.github.com/users/gaearon',
-  uri: `https://api.github.com/users/${git_user}`,
-  headers: {
-        'User-Agent': 'Request-Promise'
-    },
-  json: true
-}))
-.then((data: GithubUsers) => db.one(
-  'INSERT INTO github_users (login, name, company, followers, following) VALUES ($[login], $[name], $[company], $[followers], $[following]) RETURNING id', data)
-//).then(({id}) => console.log(id))
-//.then(() => process.exit(0));
-).then(
-  ({id}) => {
-    console.log(id);
-    process.exit(0);
+//https://www.npmjs.com/package/command-line-args
+const optionDefinitions = [
+  { name: 'username', alias: 'u', type: String, defaultOption: true},
+  { name: 'stats', alias: 's', type: Boolean},
+  { name: 'location', alias: 'l', type: Boolean}
+]
+
+const commandLineArgs = require('command-line-args')
+const argOptions = commandLineArgs(optionDefinitions)
+
+if (argOptions.username === undefined && 
+    argOptions.stats    === undefined &&
+    argOptions.location === undefined
+  )
+{
+  console.error("Please use one or more of the following parameters:\n\
+                  * add username              : <username>\n\
+                  * Users grouped by location : -s | --stats\n\
+                  * Users from Lisbon         : -l | --location\n");
+  process.exit(0);
+}
+
+if(argOptions.username !== undefined)
+{
+  db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT PRIMARY KEY, name TEXT, company TEXT, followers TEXT, following TEXT, location TEXT)')
+  .then(() => request({
+    //uri: 'https://api.github.com/users/gaearon',
+    uri: `https://api.github.com/users/${argOptions.username}`,
+    headers: {
+          'User-Agent': 'Request-Promise'
+      },
+    json: true
+  }))
+  .then((data: GithubUsers) => db.one(
+    'INSERT INTO github_users (login, name, company, followers, following, location) VALUES ($[login], $[name], $[company], $[followers], $[following], $[location]) RETURNING id', data)
+  ).then(
+    ({id}) => console.log(id))
+  .catch(
+    // Log the rejection reason
+    (reason) => {
+      console.log('Handle rejected promise ('+reason+') here.')
   })
-.catch(
-        // Log the rejection reason
-        (reason) => {
-          console.log('Handle rejected promise ('+reason+') here.')
-          process.exit(0);
-      });
+  .then(() => process.exit(0));
+}
+
+if(argOptions.stats === true)
+{
+  console.info('TODO stats')
+}
+
+if(argOptions.location === true)
+{
+  //https://vitaly-t.github.io/pg-promise/Database.html#each
+  db.each(`SELECT id, login, name FROM github_users WHERE location LIKE '%Lisbon%'`, [], row => {
+    row.id = +row.id; // leading `+` is short for `parseInt()`
+})
+    //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
+    .then(data => {data.forEach((element) => {console.log(`${element.login}  ${element.name}`)})
+    })
+    .catch(error => {
+      console.log('Handle rejected promise ('+error+') here.')
+    })
+    .then(() => process.exit(0));
+}
