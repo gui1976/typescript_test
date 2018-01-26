@@ -87,6 +87,10 @@ if (argOptions.username === undefined &&
   process.exit(0);
 }
 
+console.info('\Username:', argOptions.username);
+console.info('Stats:', argOptions.stats);
+console.info('Location:', argOptions.location);
+
 if(argOptions.username !== undefined)
 {
   db.none('CREATE TABLE IF NOT EXISTS github_users (id BIGSERIAL, login TEXT PRIMARY KEY, name TEXT, company TEXT, followers TEXT, following TEXT, location TEXT)')
@@ -106,13 +110,28 @@ if(argOptions.username !== undefined)
     // Log the rejection reason
     (reason) => {
       console.log('Handle rejected promise ('+reason+') here.')
+    process.exit(1);
   })
   .then(() => process.exit(0));
 }
 
 if(argOptions.stats === true)
 {
-  console.info('TODO stats')
+  //https://vitaly-t.github.io/pg-promise/Database.html#each
+  db.each(`SELECT location, count(id) FROM github_users group by location`, [], row => {
+    row.id = +row.id; // leading `+` is short for `parseInt()`
+})
+    //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
+    .then(data => {
+      console.info('\nUSERS by Location:');
+      data.forEach((element) => {
+        console.log(`${element.location} | ${element.count}`)
+      })
+    })
+    .catch(error => {
+      console.log('Handle rejected promise ('+error+') here.')
+    })
+    //.then(() => process.exit(0));
 }
 
 if(argOptions.location === true)
@@ -122,10 +141,11 @@ if(argOptions.location === true)
     row.id = +row.id; // leading `+` is short for `parseInt()`
 })
     //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach
-    .then(data => {data.forEach((element) => {console.log(`${element.login}  ${element.name}`)})
+    .then(data => {
+      console.info('\nUSERS in Lisbon:');
+      data.forEach((element) => {
+        console.log(`${element.login} | ${element.name}`)
+      })
     })
-    .catch(error => {
-      console.log('Handle rejected promise ('+error+') here.')
-    })
-    .then(() => process.exit(0));
+    //.then(() => process.exit(0));
 }
